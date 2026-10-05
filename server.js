@@ -331,6 +331,28 @@ async function authenticateAdminSession(request, response) {
 }
 
 async function readJson(request) {
+  if (request.body !== undefined) {
+    const parsedBody = request.body;
+    if (Buffer.isBuffer(parsedBody)) {
+      if (parsedBody.length > 1_000_000) {
+        const error = new Error("Verzoek is te groot.");
+        error.statusCode = 413;
+        throw error;
+      }
+      return parseJsonBody(parsedBody.toString("utf8"));
+    }
+    if (typeof parsedBody === "string") {
+      if (Buffer.byteLength(parsedBody) > 1_000_000) {
+        const error = new Error("Verzoek is te groot.");
+        error.statusCode = 413;
+        throw error;
+      }
+      return parseJsonBody(parsedBody);
+    }
+    if (parsedBody && typeof parsedBody === "object") return parsedBody;
+    if (parsedBody == null) return {};
+  }
+
   let body = "";
   for await (const chunk of request) {
     body += chunk;
@@ -340,6 +362,10 @@ async function readJson(request) {
       throw error;
     }
   }
+  return parseJsonBody(body);
+}
+
+function parseJsonBody(body) {
   try {
     return body ? JSON.parse(body) : {};
   } catch {
@@ -1093,6 +1119,7 @@ module.exports = Object.assign(server, {
   forwardCallToN8n,
   hashAdminPassword,
   handleRequest,
+  readJson,
   serverlessHandler,
   summarizeCall,
 });

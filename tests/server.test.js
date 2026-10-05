@@ -7,9 +7,26 @@ const {
   createBookingFromTool,
   createOrderFromTool,
   hashAdminPassword,
+  readJson,
   serverlessHandler,
   summarizeCall,
 } = require("../server");
+
+test("JSON reader accepts Vercel's pre-parsed request body", async () => {
+  const body = { status: "Afgerond" };
+  const request = {
+    body,
+    async *[Symbol.asyncIterator]() {
+      throw new Error("The request stream should not be consumed when body is pre-parsed.");
+    },
+  };
+
+  assert.equal(await readJson(request), body);
+});
+
+test("JSON reader parses a Vercel request body string", async () => {
+  assert.deepEqual(await readJson({ body: "{\"status\":\"In behandeling\"}" }), { status: "In behandeling" });
+});
 
 test("assistant is configured for Dutch speech, interruption, booking and orders", () => {
   const assistant = assistantConfiguration();
