@@ -7,6 +7,7 @@ const {
   createBookingFromTool,
   createOrderFromTool,
   hashAdminPassword,
+  serverlessHandler,
   summarizeCall,
 } = require("../server");
 
@@ -61,9 +62,10 @@ test("Vercel production URL is used for webhooks and API entrypoints export hand
     const assistant = assistantConfiguration();
     assert.equal(assistant.server.url, "https://orderagent-chi.vercel.app/api/webhooks/vapi");
     assert.equal(typeof require("../server").listen, "function");
-    assert.equal(typeof require("../server").serverlessHandler, "function");
-    assert.equal(typeof require("../api"), "function");
-    assert.equal(typeof require("../api/[...path]"), "function");
+    assert.equal(typeof serverlessHandler, "function");
+    assert.equal(typeof require("../api/health"), "function");
+    assert.equal(typeof require("../api/auth/me"), "function");
+    assert.equal(typeof require("../api/integrations/vapi/deploy"), "function");
   } finally {
     if (originalPublicBaseUrl === undefined) delete process.env.PUBLIC_BASE_URL;
     else process.env.PUBLIC_BASE_URL = originalPublicBaseUrl;
@@ -140,7 +142,7 @@ test("dashboard APIs authenticate using signed sessions in Vercel serverless ins
     else process.env.VERCEL = originalVercel;
   });
 
-  const server = http.createServer(require("../api"));
+  const server = http.createServer(serverlessHandler);
   await new Promise((resolve, reject) => {
     server.once("error", reject);
     server.listen(0, "127.0.0.1", resolve);
