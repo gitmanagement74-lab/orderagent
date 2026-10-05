@@ -7,6 +7,13 @@ const crypto = require("node:crypto");
 const ROOT = __dirname;
 const PUBLIC_DIR = path.join(ROOT, "public");
 
+function publicBaseUrl() {
+  if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL;
+  if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL;
+  const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+  return vercelHost ? `https://${vercelHost.replace(/^https?:\/\//, "")}` : "";
+}
+
 function loadLocalEnvironment() {
   let contents;
   try {
@@ -215,8 +222,9 @@ function readCookie(request, cookieName) {
 }
 
 function setSessionCookie(response, sessionId, maxAge = ADMIN_SESSION_MAX_AGE_SECONDS) {
-  const secure = process.env.PUBLIC_BASE_URL
-    ? new URL(process.env.PUBLIC_BASE_URL).protocol === "https:"
+  const baseUrl = publicBaseUrl();
+  const secure = baseUrl
+    ? new URL(baseUrl).protocol === "https:"
     : false;
   response.setHeader("Set-Cookie", [
     `${ADMIN_SESSION_COOKIE}=${encodeURIComponent(sessionId)}`,
@@ -226,6 +234,13 @@ function setSessionCookie(response, sessionId, maxAge = ADMIN_SESSION_MAX_AGE_SE
     `Max-Age=${maxAge}`,
     secure ? "Secure" : "",
   ].filter(Boolean).join("; "));
+}
+
+function createVercelSessionToken(expiresAt, passwordHash) {
+  const signature = crypto.createHmac("sha256", passwordHash)
+    .update(`${configuredAdminEmail()}:${expiresAt}`)
+    .digest("base64url");
+  return `${expiresAt}.${signature}`;
 }
 
 function clearSessionCookie(response) {
@@ -262,8 +277,9 @@ function checkRequestOrigin(request, url) {
     error.statusCode = 403;
     throw error;
   }
-  const expectedOrigin = process.env.PUBLIC_BASE_URL
-    ? new URL(process.env.PUBLIC_BASE_URL).origin
+  const baseUrl = publicBaseUrl();
+  const expectedOrigin = baseUrl
+    ? new URL(baseUrl).origin
     : url.origin;
   if (actualOrigin !== expectedOrigin) {
     const error = new Error("Verzoek van een andere website geweigerd.");
@@ -275,6 +291,28 @@ function checkRequestOrigin(request, url) {
 async function authenticateAdminSession(request, response) {
   requireAdminConfiguration();
   const sessionId = readCookie(request, ADMIN_SESSION_COOKIE);
+  if (process.env.VERCEL) {
+    const [expiresAtValue, signature] = sessionId.split(".");
+    const expiresAt = Number(expiresAtValue);
+    const validShape = Number.isSafeInteger(expiresAt) && /^[A-Za-z0-9_-]{43}$/.test(signature || "");
+    const expectedSignature = validShape
+      ? createVercelSessionToken(expiresAt, configuredAdminPasswordHash()).split(".")[1]
+      : "";
+    const isValidSignature = validShape
+      && crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+    if (!isValidSignature || expiresAt <= Date.now()) {
+      clearSessionCookie(response);
+      const error = new Error("Log in met het beheerderswachtwoord om verder te gaan.");
+      error.statusCode = 401;
+      throw error;
+    }
+    return {
+      email: configuredAdminEmail(),
+      user: { email: configuredAdminEmail() },
+      passwordHash: configuredAdminPasswordHash(),
+      expiresAt,
+    };
+  }
   const session = sessionId ? adminSessions.get(sessionId) : null;
   if (
     !session
@@ -512,11 +550,17 @@ async function loginAdmin(email, password, response) {
   }
 
   const sessionId = crypto.randomBytes(32).toString("base64url");
+  const expiresAt = Date.now() + ADMIN_SESSION_MAX_AGE_SECONDS * 1000;
+  const passwordHash = configuredAdminPasswordHash();
+  if (process.env.VERCEL) {
+    setSessionCookie(response, createVercelSessionToken(expiresAt, passwordHash), ADMIN_SESSION_MAX_AGE_SECONDS);
+    return { authenticated: true, email: configuredAdminEmail() };
+  }
   adminSessions.set(sessionId, {
     email: configuredAdminEmail(),
-    passwordHash: configuredAdminPasswordHash(),
+    passwordHash,
     user: { email: configuredAdminEmail() },
-    expiresAt: Date.now() + ADMIN_SESSION_MAX_AGE_SECONDS * 1000,
+    expiresAt,
   });
   setSessionCookie(response, sessionId);
   return { authenticated: true, email: configuredAdminEmail() };
@@ -670,8 +714,9 @@ function assistantConfiguration() {
     serverMessages: ["tool-calls", "end-of-call-report"],
     analysisPlan: { summaryPlan: { enabled: true } },
   };
-  if (process.env.PUBLIC_BASE_URL) {
-    assistant.server = { url: `${process.env.PUBLIC_BASE_URL.replace(/\/$/, "")}/api/webhooks/vapi` };
+  const baseUrl = publicBaseUrl();
+  if (baseUrl) {
+    assistant.server = { url: `${baseUrl.replace(/\/$/, "")}/api/webhooks/vapi` };
     if (process.env.VAPI_WEBHOOK_CREDENTIAL_ID) {
       assistant.server.credentialId = process.env.VAPI_WEBHOOK_CREDENTIAL_ID;
     }
@@ -685,7 +730,7 @@ async function deployAssistant(accessToken, serviceRole = false) {
     error.statusCode = 400;
     throw error;
   }
-  if (!process.env.PUBLIC_BASE_URL) {
+  if (!publicBaseUrl()) {
     const error = new Error("PUBLIC_BASE_URL ontbreekt. Stel het publieke HTTPS-adres van deze server in voordat je de assistent publiceert.");
     error.statusCode = 400;
     throw error;
@@ -790,7 +835,7 @@ async function handleRequest(request, response) {
         vapiKeyStoredLocally: Boolean(process.env.VAPI_API_KEY),
         vapiConfigured: Boolean(
           process.env.VAPI_API_KEY
-          && process.env.PUBLIC_BASE_URL
+          && publicBaseUrl()
           && process.env.SUPABASE_SECRET_KEY
           && process.env.VAPI_WEBHOOK_SECRET
           && process.env.VAPI_WEBHOOK_CREDENTIAL_ID
@@ -1022,28 +1067,22 @@ async function handleRequest(request, response) {
   }
 }
 
-async function start() {
-  const server = http.createServer((request, response) => {
-    handleRequest(request, response).catch((error) => {
-      console.error("Verzoek mislukt:", error);
-      if (!response.headersSent) {
-        jsonResponse(response, error.statusCode || 500, { error: error.statusCode ? error.message : "Er is een serverfout opgetreden." });
-      } else {
-        response.destroy();
-      }
-    });
+const server = http.createServer((request, response) => {
+  handleRequest(request, response).catch((error) => {
+    console.error("Verzoek mislukt:", error);
+    if (!response.headersSent) {
+      jsonResponse(response, error.statusCode || 500, { error: error.statusCode ? error.message : "Er is een serverfout opgetreden." });
+    } else {
+      response.destroy();
+    }
   });
+});
+
+async function start() {
   server.listen(PORT, () => console.log(`Dashboard beschikbaar op http://localhost:${PORT}`));
 }
 
-if (require.main === module) {
-  start().catch((error) => {
-    console.error("Server starten mislukt:", error);
-    process.exitCode = 1;
-  });
-}
-
-module.exports = {
+module.exports = Object.assign(server, {
   assistantConfiguration,
   createBookingFromTool,
   createOrderFromTool,
@@ -1051,4 +1090,11 @@ module.exports = {
   hashAdminPassword,
   handleRequest,
   summarizeCall,
-};
+});
+
+if (require.main === module || process.env.VERCEL) {
+  start().catch((error) => {
+    console.error("Server starten mislukt:", error);
+    process.exitCode = 1;
+  });
+}

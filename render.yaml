@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: stem-voice-agent
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+      - key: VAPI_API_KEY
+        sync: false
+      - key: VAPI_WEBHOOK_SECRET
+        sync: false
+      - key: VAPI_WEBHOOK_CREDENTIAL_ID
+        sync: false
+      - key: VAPI_PHONE_NUMBER_ID
+        sync: false
+      - key: N8N_WEBHOOK_URL
+        sync: false
+      - key: N8N_WEBHOOK_SECRET
+        sync: false
+      - key: N8N_SMS_FROM_NUMBER
+        sync: false

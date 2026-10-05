@@ -25,6 +25,55 @@ test("assistant is configured for Dutch speech, interruption, booking and orders
   assert.ok(assistant.model.messages[0].content.includes("Schakel NOOIT over naar Duits of Engels"));
 });
 
+test("assistant webhook uses Render's public URL when PUBLIC_BASE_URL is not set", () => {
+  const originalPublicBaseUrl = process.env.PUBLIC_BASE_URL;
+  const originalRenderExternalUrl = process.env.RENDER_EXTERNAL_URL;
+  const originalVercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  const originalVercelUrl = process.env.VERCEL_URL;
+  try {
+    delete process.env.PUBLIC_BASE_URL;
+    delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    delete process.env.VERCEL_URL;
+    process.env.RENDER_EXTERNAL_URL = "https://stem-voice-agent.onrender.com";
+    const assistant = assistantConfiguration();
+    assert.equal(assistant.server.url, "https://stem-voice-agent.onrender.com/api/webhooks/vapi");
+  } finally {
+    if (originalPublicBaseUrl === undefined) delete process.env.PUBLIC_BASE_URL;
+    else process.env.PUBLIC_BASE_URL = originalPublicBaseUrl;
+    if (originalRenderExternalUrl === undefined) delete process.env.RENDER_EXTERNAL_URL;
+    else process.env.RENDER_EXTERNAL_URL = originalRenderExternalUrl;
+    if (originalVercelProductionUrl === undefined) delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    else process.env.VERCEL_PROJECT_PRODUCTION_URL = originalVercelProductionUrl;
+    if (originalVercelUrl === undefined) delete process.env.VERCEL_URL;
+    else process.env.VERCEL_URL = originalVercelUrl;
+  }
+});
+
+test("Vercel production URL is used for webhooks and the server exports a Vercel server", () => {
+  const originalPublicBaseUrl = process.env.PUBLIC_BASE_URL;
+  const originalRenderExternalUrl = process.env.RENDER_EXTERNAL_URL;
+  const originalVercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  const originalVercelUrl = process.env.VERCEL_URL;
+  try {
+    delete process.env.PUBLIC_BASE_URL;
+    delete process.env.RENDER_EXTERNAL_URL;
+    process.env.VERCEL_PROJECT_PRODUCTION_URL = "orderagent-chi.vercel.app";
+    process.env.VERCEL_URL = "orderagent-preview.vercel.app";
+    const assistant = assistantConfiguration();
+    assert.equal(assistant.server.url, "https://orderagent-chi.vercel.app/api/webhooks/vapi");
+    assert.equal(typeof require("../server").listen, "function");
+  } finally {
+    if (originalPublicBaseUrl === undefined) delete process.env.PUBLIC_BASE_URL;
+    else process.env.PUBLIC_BASE_URL = originalPublicBaseUrl;
+    if (originalRenderExternalUrl === undefined) delete process.env.RENDER_EXTERNAL_URL;
+    else process.env.RENDER_EXTERNAL_URL = originalRenderExternalUrl;
+    if (originalVercelProductionUrl === undefined) delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    else process.env.VERCEL_PROJECT_PRODUCTION_URL = originalVercelProductionUrl;
+    if (originalVercelUrl === undefined) delete process.env.VERCEL_URL;
+    else process.env.VERCEL_URL = originalVercelUrl;
+  }
+});
+
 test("order tool calculates total using server menu prices, not supplied prices", () => {
   const result = createOrderFromTool({
     customerName: "Sam",
@@ -77,11 +126,17 @@ test("call summary uses Vapi call and analysis fields", () => {
   assert.equal(result.transcript, "Beller: twee koffies.");
 });
 
-test("dashboard APIs reject access without an authenticated admin session", async (context) => {
+test("dashboard APIs authenticate using signed sessions in Vercel serverless instances", async (context) => {
+  const originalVercel = process.env.VERCEL;
   process.env.SUPABASE_URL ||= "https://project.example.supabase.co";
   process.env.SUPABASE_SECRET_KEY ||= "sb_secret_test";
   process.env.ADMIN_EMAIL ||= "admin@example.com";
   process.env.ADMIN_PASSWORD_HASH ||= hashAdminPassword("correct horse battery staple");
+  process.env.VERCEL = "1";
+  context.after(() => {
+    if (originalVercel === undefined) delete process.env.VERCEL;
+    else process.env.VERCEL = originalVercel;
+  });
 
   const server = http.createServer((request, response) => {
     handleRequest(request, response).catch((error) => {

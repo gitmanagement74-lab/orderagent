@@ -13,6 +13,26 @@ Vereist Node.js 20 of nieuwer.
 
 Er zijn geen npm-pakketten nodig. Bedrijfsgegevens, aanbod, boekingen, bestellingen en gespreksverslagen worden in de Supabase-tabel `public.app_state` opgeslagen. De dashboardlogin is app-beheerd en gebruikt geen Supabase Auth: één e-mailadres en een scrypt-wachtwoordhash worden server-side ingesteld. Dashboardroutes vereisen een geldige, HttpOnly-beheerderssessie. De server gebruikt de Supabase-secret key voor databaseverzoeken; deze key omzeilt RLS en mag daarom uitsluitend op de vertrouwde server staan, nooit in de browser. Beveilig en beperk de toegang tot de server en de `.env`-file.
 
+## Testdeployment op Render (zonder Vercel)
+
+In de hoofdmap staat `render.yaml` voor een gratis Render-webservice. De gratis service kan na inactiviteit slapen; gebruik deze tier alleen om te testen, omdat de eerste Vapi-webhook na het slapen vertraging kan oplopen. Voor continu beschikbare telefonie is een always-on hostingplan nodig.
+
+1. Push de projectbestanden naar een GitHub-repository en maak in Render een nieuwe Blueprint aan die deze repository gebruikt.
+2. Render leest `render.yaml` en vraagt om de variabelen met `sync: false`. Vul daar de Supabase- en Vapi-geheimen in. Vul voor `ADMIN_PASSWORD_HASH` alleen de gegenereerde scrypt-hash in: maak die lokaal met `npm run admin:password` en kopieer de hash uit `.env`; voer nooit een wachtwoord als Render-variabele in.
+3. Vul ook `N8N_WEBHOOK_URL`, `N8N_WEBHOOK_SECRET` en `N8N_SMS_FROM_NUMBER` in als sms na gesprekken gewenst is. `VAPI_PHONE_NUMBER_ID` is nodig om het telefoonnummer automatisch bij publicatie te koppelen.
+4. Render stelt `RENDER_EXTERNAL_URL` beschikbaar. De app gebruikt dit automatisch voor beveiligde cookies, browserherkomstcontroles en de Vapi-webhook; `PUBLIC_BASE_URL` hoeft dus niet handmatig in Render te worden ingesteld.
+5. Open na de deployment de Render-URL, meld aan en kies in de instellingen **Assistent naar Vapi sturen** zodat Vapi de Render-webhook gebruikt in plaats van de tijdelijke lokale tunnel.
+
+Zet nooit `.env` of geheimen in GitHub. De tijdelijke gratis Render-service is geschikt voor deploymenttests, maar niet voor betrouwbare beantwoording van oproepen wanneer de service slaapt.
+
+## Deployen op Vercel
+
+De app gebruikt `server.js` als Node.js HTTP-server; `vercel.json` configureert Vercel om die server en de dashboardbestanden in `public/` te gebruiken. Koppel de GitHub-repository aan Vercel en deploy de branch die de actuele code bevat.
+
+Stel de benodigde geheimen in onder **Project Settings → Environment Variables**. Vercel stelt `VERCEL_PROJECT_PRODUCTION_URL` beschikbaar voor de productiehost; de app gebruikt dit automatisch voor Vapi-callbacks als `PUBLIC_BASE_URL` niet expliciet is ingesteld. Controleer na deployment `/api/health` en meld je aan via de productie-URL. Na het instellen van de productiehost moet je in het dashboard **Assistent naar Vapi sturen** kiezen om de callback-URL van de assistent bij te werken.
+
+Applicatiegegevens worden in Supabase opgeslagen. Op Vercel gebruikt de dashboardlogin een ondertekende, stateless sessiecookie zodat meerdere functie-instanties dezelfde sessie kunnen valideren; het wachtwoordhash fungeert als sleutel en een wachtwoordwijziging maakt bestaande cookies ongeldig. Test een Vapi-gesprek en callback na iedere deployment.
+
 ## Supabase-database en admin instellen
 
 1. Open het SQL Editor-scherm van project `fkhfuffdbfzpohwphzfu` in het Supabase-dashboard. Voer `supabase/migrations/20261005181000_create_admin_dashboard.sql` uit. Dit maakt de dashboardopslag, initiële voorbeeldcatalogus en restrictieve Row Level Security-policies aan.
