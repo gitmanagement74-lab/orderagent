@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f6f7f5">
+    <meta name="description" content="Beheer je Nederlandse telefoonassistent, bestellingen en boekingen.">
+    <title>Stem — Telefoonassistent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js?v=2" defer></script>
+  </head>
+  <body>
+    <section class="auth-screen" id="auth-screen">
+      <form class="auth-card" id="login-form">
+        <a class="brand auth-brand" href="/" aria-label="Stem">
+          <span class="brand-mark">s<span>.</span></span>
+          <span class="brand-name">stem<span class="brand-dot">.</span><small>VOICE STUDIO</small></span>
+        </a>
+        <div class="eyebrow">VEILIGE BEHEERDERSOMGEVING</div>
+        <h1>Welkom terug<span class="heading-period">.</span></h1>
+        <p class="auth-description">Log in met het toegestane beheerdersadres en wachtwoord.</p>
+        <label for="admin-email">Beheerders-e-mailadres</label>
+        <input id="admin-email" name="email" type="email" autocomplete="username" required maxlength="254" placeholder="naam@bedrijf.nl">
+        <label for="admin-password">Wachtwoord</label>
+        <input id="admin-password" name="password" type="password" autocomplete="current-password" required maxlength="1024" placeholder="Je wachtwoord">
+        <button class="button button-primary full-button" type="submit" id="login-button">Veilig inloggen <span>→</span></button>
+        <p class="auth-message" id="login-message" role="status" aria-live="polite"></p>
+        <p class="auth-security-note"><span>♧</span> Alleen vooraf toegelaten beheerders krijgen toegang.</p>
+      </form>
+    </section>
+    <div class="app-shell" id="app-shell" hidden>
+      <aside class="sidebar">
+        <a class="brand" href="#" data-page="overview" aria-label="Stem startpagina">
+          <span class="brand-mark">s<span>.</span></span>
+          <span class="brand-name">stem<span class="brand-dot">.</span><small>VOICE STUDIO</small></span>
+        </a>
+        <div class="sidebar-label">WERKRUIMTE</div>
+        <nav class="main-nav" aria-label="Hoofdnavigatie">
+          <button class="nav-link active" data-page="overview"><span class="nav-icon">⌂</span>Overzicht</button>
+          <button class="nav-link" data-page="orders"><span class="nav-icon">▤</span>Bestellingen<span class="nav-count" id="order-nav-count">0</span></button>
+          <button class="nav-link" data-page="bookings"><span class="nav-icon">▦</span>Boekingen</button>
+          <button class="nav-link" data-page="calls"><span class="nav-icon">◉</span>Gesprekken</button>
+          <button class="nav-link" data-page="catalog"><span class="nav-icon">◈</span>Aanbod & prijzen</button>
+        </nav>
+        <div class="sidebar-label settings-label">INSTELLINGEN</div>
+        <nav class="main-nav" aria-label="Instellingen">
+          <button class="nav-link" data-page="settings"><span class="nav-icon">⚙</span>Bedrijfsinstellingen</button>
+        </nav>
+        <div class="sidebar-spacer"></div>
+        <div class="sidebar-assistant">
+          <div class="assistant-avatar"><span class="pulse-dot"></span><span>✳</span></div>
+          <div class="assistant-copy"><strong id="side-business-name">Jouw zaak</strong><small id="side-assistant-status">Assistent niet gekoppeld</small></div>
+          <button class="icon-button more-button" aria-label="Meer opties">···</button>
+        </div>
+        <div class="sidebar-footer">GEMAAKT VOOR GASTVRIJHEID <span>v1.0</span></div>
+      </aside>
+
+      <main class="main-area">
+        <header class="topbar">
+          <div class="breadcrumb"><span>Werkruimte</span><span class="crumb-slash">/</span><strong id="page-heading">Overzicht</strong></div>
+          <div class="topbar-actions">
+            <span class="system-status"><span></span>Systeem actief</span>
+            <button class="avatar-button logout-button" id="logout-button" aria-label="Uitloggen">JS</button>
+          </div>
+        </header>
+
+        <section class="page page-active" id="page-overview">
+          <div class="welcome-row">
+            <div><div class="eyebrow" id="current-date"></div><h1>Goedemiddag<span class="heading-period">.</span></h1><p>Dit gebeurt er vandaag bij <strong id="welcome-business-name">jouw zaak</strong>.</p></div>
+            <button class="button button-primary" data-page="settings"><span>✳</span> Assistent instellen <span class="button-arrow">↗</span></button>
+          </div>
+          <div class="metric-grid">
+            <article class="metric-card"><div class="metric-top"><span>Bestellingen vandaag</span><span class="metric-icon icon-orange">▤</span></div><div class="metric-value" id="metric-orders">0</div><div class="metric-foot"><span class="metric-muted">Via telefoon ontvangen</span><span class="metric-trend">LIVE</span></div></article>
+            <article class="metric-card"><div class="metric-top"><span>Boekingen vandaag</span><span class="metric-icon icon-lavender">▦</span></div><div class="metric-value" id="metric-bookings">0</div><div class="metric-foot"><span class="metric-muted">Reserveringen & activiteiten</span><span class="metric-trend trend-purple">LIVE</span></div></article>
+            <article class="metric-card"><div class="metric-top"><span>Telefoontjes beantwoord</span><span class="metric-icon icon-green">◉</span></div><div class="metric-value" id="metric-calls">0</div><div class="metric-foot"><span class="metric-muted">Afgeronde gesprekken</span><span class="metric-trend trend-green">LIVE</span></div></article>
+            <article class="metric-card"><div class="metric-top"><span>Omzet uit bestellingen</span><span class="metric-icon icon-blue">€</span></div><div class="metric-value" id="metric-revenue">€ 0</div><div class="metric-foot"><span class="metric-muted">Geregistreerde bestellingen</span><span class="metric-trend trend-blue">TOTAAL</span></div></article>
+          </div>
+          <div class="dashboard-grid">
+            <article class="panel recent-panel">
+              <div class="panel-heading"><div><h2>Recente bestellingen</h2><p>De nieuwste aanvragen via de telefoon.</p></div><button class="text-button" data-page="orders">Alle bestellingen <span>→</span></button></div>
+              <div class="table-wrap"><table><thead><tr><th>KLANT</th><th>BESTELLING</th><th>TYPE</th><th>BEDRAG</th><th>STATUS</th></tr></thead><tbody id="recent-orders"></tbody></table></div>
+              <div class="empty-inline" id="orders-empty"><span class="empty-glyph">▤</span><strong>Nog geen bestellingen</strong><span>Nieuwe telefonische bestellingen verschijnen hier.</span></div>
+            </article>
+            <article class="panel assistant-panel">
+              <div class="panel-heading"><div><h2>Je telefoonassistent</h2><p>Altijd vriendelijk aan de lijn.</p></div><span class="status-pill status-pending" id="assistant-status-badge">Niet gekoppeld</span></div>
+              <div class="voice-orb"><div class="orb-ring"></div><div class="orb-core">✳</div><div class="sound-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+              <div class="assistant-detail"><h3 id="assistant-business-title">Nederlandse telefoonassistent</h3><p>Nederlands <span>·</span> Gemini <span>·</span> Direct reageren</p></div>
+              <div class="assistant-checks"><div><span class="check-icon">✓</span> Spreekt natuurlijk Nederlands</div><div><span class="check-icon">✓</span> Onderbreken en direct luisteren</div><div><span class="check-icon">✓</span> Vat gesprekken samen per sms</div></div>
+              <button class="button button-outline full-button" data-page="settings">Assistent beheren <span>→</span></button>
+            </article>
+          </div>
+          <div class="bottom-grid">
+            <article class="panel activity-panel"><div class="panel-heading"><div><h2>Laatste gesprekken</h2><p>Verslagen van afgeronde telefoontjes.</p></div><button class="text-button" data-page="calls">Bekijk alles <span>→</span></button></div><div id="recent-calls" class="call-list"></div><div class="empty-inline compact-empty" id="calls-empty"><span class="empty-glyph">◉</span><strong>Nog geen gesprekken</strong><span>Na je eerste telefoontje zie je hier een samenvatting.</span></div></article>
+            <article class="panel setup-panel"><div class="panel-heading"><div><h2>Klaar om te beginnen?</h2><p>In drie stappen bereikbaar voor je gasten.</p></div><span class="setup-sparkle">✳</span></div><div class="setup-steps"><div><span class="step-number">01</span><div><strong>Vul je bedrijfsgegevens in</strong><small>Openingstijden, diensten en bezorggebied</small></div><span class="step-state" id="step-settings">○</span></div><div><span class="step-number">02</span><div><strong>Controleer je aanbod en prijzen</strong><small>Je assistent gebruikt alleen jouw prijzen</small></div><span class="step-state">○</span></div><div><span class="step-number">03</span><div><strong>Verbind Vapi en activeer sms</strong><small>Koppel Gemini, je nummer en n8n</small></div><span class="step-state" id="step-connect">○</span></div></div><button class="button button-dark full-button" data-page="settings">Aan de slag <span>→</span></button></article>
+          </div>
+        </section>
+
+        <section class="page" id="page-orders">
+          <div class="page-title-row"><div><div class="eyebrow">KLANTERVARING</div><h1>Bestellingen<span class="heading-period">.</span></h1><p>Ingekomen bestellingen en aflevervoorkeuren.</p></div><button class="button button-primary" id="new-order-button">＋ Nieuwe bestelling</button></div>
+          <div class="panel full-panel"><div class="panel-heading"><div><h2>Alle bestellingen</h2><p id="orders-caption">Je bestellingen worden hier bijgehouden.</p></div><select class="filter-select" id="order-filter" aria-label="Filter bestellingen"><option value="Alle">Alle statussen</option><option value="Nieuw">Nieuw</option><option value="In behandeling">In behandeling</option><option value="Afgerond">Afgerond</option></select></div><div class="table-wrap"><table><thead><tr><th>KLANT</th><th>BESTELLING</th><th>TYPE</th><th>TIJD</th><th>BEDRAG</th><th>STATUS</th></tr></thead><tbody id="orders-table"></tbody></table></div><div class="empty-inline" id="orders-page-empty"><span class="empty-glyph">▤</span><strong>Hier komt je eerste bestelling</strong><span>Bestellingen worden na ieder gesprek automatisch toegevoegd.</span></div></div>
+        </section>
+
+        <section class="page" id="page-bookings">
+          <div class="page-title-row"><div><div class="eyebrow">GASTEN & ACTIVITEITEN</div><h1>Boekingen<span class="heading-period">.</span></h1><p>Reserveringen, afspraken en activiteiten.</p></div><button class="button button-primary" id="new-booking-button">＋ Nieuwe boeking</button></div>
+          <div class="panel full-panel"><div class="panel-heading"><div><h2>Alle boekingen</h2><p>Houd aanvragen en afgesproken tijdstippen bij.</p></div><span class="filter-select filter-label">Alle boekingen</span></div><div class="table-wrap"><table><thead><tr><th>KLANT</th><th>ACTIVITEIT</th><th>DATUM & TIJD</th><th>PERSONEN</th><th>CONTACT</th><th>STATUS</th></tr></thead><tbody id="bookings-table"></tbody></table></div><div class="empty-inline" id="bookings-empty"><span class="empty-glyph">▦</span><strong>Nog geen boekingen</strong><span>Nieuwe boekingen worden hier overzichtelijk getoond.</span></div></div>
+        </section>
+
+        <section class="page" id="page-calls">
+          <div class="page-title-row"><div><div class="eyebrow">TELEFOONLIJN</div><h1>Gesprekken<span class="heading-period">.</span></h1><p>Gespreksverslagen van je telefoonassistent.</p></div><span class="status-pill status-pending" id="calls-connection-badge">Wacht op koppeling</span></div>
+          <div class="panel full-panel"><div class="panel-heading"><div><h2>Recente telefoontjes</h2><p>Samenvattingen worden veilig op je server opgeslagen.</p></div></div><div id="calls-list" class="calls-page-list"></div><div class="empty-inline" id="calls-page-empty"><span class="empty-glyph">◉</span><strong>Je belgeschiedenis is nog leeg</strong><span>Zodra Vapi is gekoppeld, verschijnen afgeronde gesprekken hier.</span></div></div>
+        </section>
+
+        <section class="page" id="page-catalog">
+          <div class="page-title-row"><div><div class="eyebrow">WAT JE AANBIEDT</div><h1>Aanbod & prijzen<span class="heading-period">.</span></h1><p>Je assistent gebruikt deze actuele producten en tarieven.</p></div><button class="button button-primary" id="add-item-button">＋ Product toevoegen</button></div>
+          <div class="info-banner"><span>✳</span><div><strong>Kloppende prijzen, blije gasten.</strong><small>Alleen beschikbare producten met een ingestelde prijs worden aan de telefoon genoemd.</small></div></div>
+          <div class="panel full-panel catalog-panel"><div class="panel-heading"><div><h2>Jouw aanbod</h2><p>Pas productnamen, omschrijvingen, prijzen en beschikbaarheid aan.</p></div><button class="button button-outline button-small" id="save-menu-button">Wijzigingen opslaan</button></div><div class="table-wrap"><table><thead><tr><th>PRODUCT OF ACTIVITEIT</th><th>OMSCHRIJVING</th><th>PRIJS</th><th>BESCHIKBAAR</th><th></th></tr></thead><tbody id="menu-table"></tbody></table></div><div class="empty-inline" id="menu-empty"><strong>Nog geen aanbod</strong><span>Voeg producten of activiteiten toe.</span></div></div>
+        </section>
+
+        <section class="page" id="page-settings">
+          <div class="page-title-row"><div><div class="eyebrow">JOUW BEDRIJF</div><h1>Bedrijfsinstellingen<span class="heading-period">.</span></h1><p>Geef je assistent alle informatie om je gasten goed te helpen.</p></div></div>
+          <div class="settings-layout"><div>
+            <article class="panel settings-panel"><div class="panel-heading"><div><h2>Over je zaak</h2><p>Zo stelt de assistent zich voor aan de telefoon.</p></div><span class="section-icon icon-orange">⌂</span></div><form id="settings-form" class="settings-form"><label>Bedrijfsnaam<span class="required-star">*</span><input name="name" maxlength="80" placeholder="Bijv. De Gasterij" required></label><div class="form-row"><label>Telefoonnummer<input name="phone" type="tel" placeholder="+31 20 123 4567"></label><label>Adres van je zaak<input name="address" maxlength="180" placeholder="Straat, huisnummer, plaats"></label></div><label>Openingstijden<textarea name="openingHours" rows="2" maxlength="250" placeholder="Bijv. Maandag t/m zondag, 12:00–22:00"></textarea></label><div class="form-row"><label>Bezorggebied<input name="deliveryArea" maxlength="250" placeholder="Bijv. binnen 5 km van het centrum"></label><div class="time-fields"><label>Bereiding (min.)<input name="preparationMinutes" type="number" min="1" max="240"></label><label>Bezorging (min.)<input name="deliveryMinutes" type="number" min="1" max="240"></label></div></div><div class="toggle-grid"><label class="toggle-line"><span><strong>Afhalen aanbieden</strong><small>Gasten kunnen hun bestelling zelf ophalen.</small></span><input name="pickupAvailable" type="checkbox"><i></i></label><label class="toggle-line"><span><strong>Bezorgen aanbieden</strong><small>De assistent vraagt om het afleveradres.</small></span><input name="deliveryAvailable" type="checkbox"><i></i></label></div><div class="form-actions"><span id="settings-save-message" class="save-message"></span><button class="button button-dark" type="submit">Gegevens opslaan <span>→</span></button></div></form></article>
+            <article class="panel integration-panel"><div class="panel-heading"><div><h2>Je telefonie & automatisering</h2><p>Vapi beantwoordt de oproep; n8n verstuurt de sms.</p></div><span class="section-icon icon-lavender">✳</span></div><div class="integration-cards"><div class="integration-row"><span class="integration-icon vapi-icon">v</span><div><strong>Vapi + Gemini</strong><small id="vapi-id-label">Nederlandse spraakagent</small></div><span id="vapi-status-label" class="status-pill status-pending">Nog niet gekoppeld</span></div><div class="integration-row"><span class="integration-icon n8n-icon">n</span><div><strong>n8n + sms</strong><small id="n8n-status-label">Controleer N8N_WEBHOOK_URL</small></div><span class="status-pill status-info">Webhook</span></div></div><div id="integration-feedback" class="integration-feedback" aria-live="polite"></div><button class="button button-primary full-button" id="deploy-assistant-button"><span>✳</span> Assistent naar Vapi sturen <span>↗</span></button><p class="small-disclaimer">Hiervoor zijn VAPI_API_KEY en PUBLIC_BASE_URL nodig op je server. Sla eerst je aanbod en instellingen op.</p></article>
+          </div><aside class="settings-side"><article class="panel checklist-card"><span class="checklist-sparkle">✳</span><div class="eyebrow">KLAAR VOOR DE EERSTE BELLETJES?</div><h2>Een gastvrije stem, ook als jij even bezig bent.</h2><p>Geef je assistent de juiste informatie en laat hem gesprekken samenvatten. Je houdt zelf de regie.</p><div class="checklist-item"><span>01</span><div><strong>Vul je bedrijfsgegevens in</strong><small>Zo kent je assistent de weg.</small></div></div><div class="checklist-item"><span>02</span><div><strong>Controleer je aanbod</strong><small>Zo noemt hij de juiste prijzen.</small></div></div><div class="checklist-item"><span>03</span><div><strong>Activeer Vapi & n8n</strong><small>Test je nummer voordat je live gaat.</small></div></div></article><article class="panel language-card"><span class="language-icon">文</span><div><strong>Altijd Nederlands</strong><p>De spraakherkenning en stem zijn ingesteld op Nederlands. De assistent wijkt niet uit naar Duits of Engels, tenzij de beller daar uitdrukkelijk om vraagt.</p></div></article></aside></div>
+        </section>
+        <footer class="main-footer"><span>Met aandacht voor elke gast <span class="footer-heart">♥</span></span><span>STEM <span class="footer-dot">·</span> TELEFOONASSISTENT</span></footer>
+      </main>
+    </div>
+
+    <dialog class="modal" id="entry-modal">
+      <form method="dialog" id="entry-form">
+        <div class="modal-heading"><div><div class="eyebrow" id="modal-eyebrow">NIEUW</div><h2 id="modal-title">Bestelling toevoegen</h2></div><button class="icon-button modal-close" value="cancel" aria-label="Sluiten">×</button></div>
+        <div id="order-fields">
+          <label>Klantnaam<span class="required-star">*</span><input name="customerName" required maxlength="100" placeholder="Naam van de klant"></label>
+          <div class="form-row"><label>Contactnummer<input name="phone" type="tel" placeholder="+31 6 12345678"></label><label>Afhalen of bezorgen<select name="type"><option value="Afhalen">Afhalen</option><option value="Bezorgen">Bezorgen</option></select></label></div>
+          <label>Bestelling<span class="required-star">*</span><input name="description" required maxlength="300" placeholder="Bijv. 2× borrelplank, 1× koffie"></label>
+          <div class="form-row"><label>Gewenste tijd<input name="requestedTime" type="datetime-local"></label><label>Totaalbedrag (€)<input name="total" type="number" min="0" step="0.01" placeholder="0,00"></label></div>
+          <label>Bezorgadres<textarea name="address" rows="2" placeholder="Alleen invullen bij bezorging"></textarea></label>
+        </div>
+        <div id="booking-fields" hidden>
+          <label>Klantnaam<span class="required-star">*</span><input name="customerName" required maxlength="100" placeholder="Naam van de klant"></label>
+          <div class="form-row"><label>Activiteit of dienst<span class="required-star">*</span><input name="service" required maxlength="120" placeholder="Bijv. tafel of bowlingbaan"></label><label>Aantal personen<input name="partySize" type="number" min="1" max="100" placeholder="2"></label></div>
+          <div class="form-row"><label>Datum en tijd<span class="required-star">*</span><input name="dateTime" type="datetime-local" required></label><label>Contactnummer<input name="phone" type="tel" placeholder="+31 6 12345678"></label></div>
+          <label>Opmerking<textarea name="notes" rows="2" placeholder="Bijzonderheden"></textarea></label>
+        </div>
+        <div class="modal-actions"><button class="button button-outline" value="cancel">Annuleren</button><button class="button button-primary" id="modal-submit" type="submit" value="save">Opslaan <span>→</span></button></div>
+      </form>
+    </dialog>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

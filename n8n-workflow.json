@@ -1,0 +1,74 @@
+{
+  "name": "Stem - gesprekssamenvatting per sms",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stem-gesprek-afgerond",
+        "responseMode": "onReceived",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "c65c9eaa-d4ac-4a8b-bc74-b4a9faebcbed",
+      "name": "Gesprek afgerond",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "28923339-a832-4a4f-8a8e-d7068c917d38",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Stem webhook header"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json.body ?? $input.first().json;\nconst callerNumber = String(input.callerNumber ?? '').trim();\nconst smsSender = String(input.smsSender ?? '').trim();\nconst businessName = String(input.businessName ?? 'ons team').trim();\nconst summary = String(input.summary ?? '').trim();\nif (!/^\\+[1-9]\\d{7,14}$/.test(callerNumber)) {\n  throw new Error('Ongeldig telefoonnummer: gebruik het internationale E.164-formaat.');\n}\nif (!/^\\+[1-9]\\d{7,14}$/.test(smsSender)) {\n  throw new Error('Stel N8N_SMS_FROM_NUMBER in op een geldig Twilio-nummer in E.164-formaat.');\n}\nif (!summary) {\n  throw new Error('Geen gesprekssamenvatting ontvangen; sms niet verstuurd.');\n}\nconst message = `Bedankt voor uw telefoontje naar ${businessName}. Samenvatting: ${summary}`;\nreturn [{ json: { callerNumber, smsSender, businessName, summary, message: message.slice(0, 1500) } }];"
+      },
+      "id": "0ae46c5d-285b-48af-bab7-84828491929b",
+      "name": "Controleer en maak sms",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "resource": "sms",
+        "operation": "send",
+        "from": "={{ $json.smsSender }}",
+        "to": "={{ $json.callerNumber }}",
+        "message": "={{ $json.message }}",
+        "options": {}
+      },
+      "id": "c28e8154-e52a-459a-b3e7-b59fec72f03b",
+      "name": "Verstuur bevestiging per sms",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [760, 300],
+      "credentials": {
+        "twilioApi": {
+          "id": "",
+          "name": "Twilio-account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gesprek afgerond": {
+      "main": [[{ "node": "Controleer en maak sms", "type": "main", "index": 0 }]]
+    },
+    "Controleer en maak sms": {
+      "main": [[{ "node": "Verstuur bevestiging per sms", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "18c021e4-b2b4-4e62-94c3-f7abfd719fe9",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

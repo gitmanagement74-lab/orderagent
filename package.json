@@ -1,0 +1,14 @@
+{
+  "name": "voice-agent-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Nederlandstalige telefonische bestellingen en boekingen met Vapi, Gemini en n8n.",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "admin:password": "node scripts/set-admin-password.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

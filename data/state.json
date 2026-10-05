@@ -1,0 +1,45 @@
+{
+  "business": {
+    "name": "Jouw zaak",
+    "phone": "",
+    "address": "",
+    "openingHours": "Maandag t/m zondag, 12:00–22:00",
+    "pickupAvailable": true,
+    "deliveryAvailable": true,
+    "deliveryArea": "",
+    "preparationMinutes": 25,
+    "deliveryMinutes": 40,
+    "language": "nl-NL"
+  },
+  "menu": [
+    {
+      "id": "item-1",
+      "name": "Borrelplank",
+      "description": "Een selectie van warme en koude hapjes",
+      "price": 18.5,
+      "available": true
+    },
+    {
+      "id": "item-2",
+      "name": "Koffie",
+      "description": "Verse koffie",
+      "price": 3.25,
+      "available": true
+    },
+    {
+      "id": "item-3",
+      "name": "Bowlen (1 uur)",
+      "description": "Een bowlingbaan voor maximaal 6 personen",
+      "price": 32,
+      "available": true
+    }
+  ],
+  "orders": [],
+  "bookings": [],
+  "calls": [],
+  "integration": {
+    "assistantId": "",
+    "assistantStatus": "Niet gekoppeld",
+    "deployedAt": ""
+  }
+}
