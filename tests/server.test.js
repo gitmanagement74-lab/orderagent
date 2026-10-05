@@ -7,7 +7,6 @@ const {
   createBookingFromTool,
   createOrderFromTool,
   hashAdminPassword,
-  handleRequest,
   summarizeCall,
 } = require("../server");
 
@@ -49,7 +48,7 @@ test("assistant webhook uses Render's public URL when PUBLIC_BASE_URL is not set
   }
 });
 
-test("Vercel production URL is used for webhooks and the server exports a Vercel server", () => {
+test("Vercel production URL is used for webhooks and API entrypoints export handlers", () => {
   const originalPublicBaseUrl = process.env.PUBLIC_BASE_URL;
   const originalRenderExternalUrl = process.env.RENDER_EXTERNAL_URL;
   const originalVercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
@@ -62,6 +61,9 @@ test("Vercel production URL is used for webhooks and the server exports a Vercel
     const assistant = assistantConfiguration();
     assert.equal(assistant.server.url, "https://orderagent-chi.vercel.app/api/webhooks/vapi");
     assert.equal(typeof require("../server").listen, "function");
+    assert.equal(typeof require("../server").serverlessHandler, "function");
+    assert.equal(typeof require("../api"), "function");
+    assert.equal(typeof require("../api/[...path]"), "function");
   } finally {
     if (originalPublicBaseUrl === undefined) delete process.env.PUBLIC_BASE_URL;
     else process.env.PUBLIC_BASE_URL = originalPublicBaseUrl;
@@ -138,12 +140,7 @@ test("dashboard APIs authenticate using signed sessions in Vercel serverless ins
     else process.env.VERCEL = originalVercel;
   });
 
-  const server = http.createServer((request, response) => {
-    handleRequest(request, response).catch((error) => {
-      response.writeHead(error.statusCode || 500, { "Content-Type": "application/json" });
-      response.end(JSON.stringify({ error: error.message }));
-    });
-  });
+  const server = http.createServer(require("../api"));
   await new Promise((resolve, reject) => {
     server.once("error", reject);
     server.listen(0, "127.0.0.1", resolve);

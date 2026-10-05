@@ -1068,7 +1068,11 @@ async function handleRequest(request, response) {
 }
 
 const server = http.createServer((request, response) => {
-  handleRequest(request, response).catch((error) => {
+  serverlessHandler(request, response);
+});
+
+function serverlessHandler(request, response) {
+  return handleRequest(request, response).catch((error) => {
     console.error("Verzoek mislukt:", error);
     if (!response.headersSent) {
       jsonResponse(response, error.statusCode || 500, { error: error.statusCode ? error.message : "Er is een serverfout opgetreden." });
@@ -1076,7 +1080,7 @@ const server = http.createServer((request, response) => {
       response.destroy();
     }
   });
-});
+}
 
 async function start() {
   server.listen(PORT, () => console.log(`Dashboard beschikbaar op http://localhost:${PORT}`));
@@ -1089,10 +1093,11 @@ module.exports = Object.assign(server, {
   forwardCallToN8n,
   hashAdminPassword,
   handleRequest,
+  serverlessHandler,
   summarizeCall,
 });
 
-if (require.main === module || process.env.VERCEL) {
+if (require.main === module) {
   start().catch((error) => {
     console.error("Server starten mislukt:", error);
     process.exitCode = 1;

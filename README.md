@@ -27,7 +27,7 @@ Zet nooit `.env` of geheimen in GitHub. De tijdelijke gratis Render-service is g
 
 ## Deployen op Vercel
 
-De app gebruikt `server.js` als Node.js HTTP-server; `vercel.json` configureert Vercel om die server en de dashboardbestanden in `public/` te gebruiken. Koppel de GitHub-repository aan Vercel en deploy de branch die de actuele code bevat.
+De Vercel-deployment gebruikt serverless API-entrypoints in `api/`; `server.js` deelt de routeafhandeling met de lokale Node.js-server. Dashboardbestanden in `public/` worden als statische bestanden aangeboden. Koppel de GitHub-repository aan Vercel en deploy de branch die de actuele code bevat.
 
 Stel de benodigde geheimen in onder **Project Settings → Environment Variables**. Vercel stelt `VERCEL_PROJECT_PRODUCTION_URL` beschikbaar voor de productiehost; de app gebruikt dit automatisch voor Vapi-callbacks als `PUBLIC_BASE_URL` niet expliciet is ingesteld. Controleer na deployment `/api/health` en meld je aan via de productie-URL. Na het instellen van de productiehost moet je in het dashboard **Assistent naar Vapi sturen** kiezen om de callback-URL van de assistent bij te werken.
 
