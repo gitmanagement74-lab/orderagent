@@ -7,6 +7,7 @@ const {
   createBookingFromTool,
   createOrderFromTool,
   hashAdminPassword,
+  normalizeToolCall,
   readJson,
   serverlessHandler,
   summarizeCall,
@@ -32,22 +33,62 @@ test("assistant is configured for Dutch speech, interruption, booking and orders
   const assistant = assistantConfiguration();
 
   assert.equal(assistant.transcriber.language, "nl");
-  assert.equal(assistant.voice.voiceId, "nl-NL-ColetteNeural");
+  assert.equal(assistant.voice.provider, "vapi");
+  assert.equal(assistant.voice.voiceId, "Emma");
+  assert.equal(assistant.voice.version, 2);
+  assert.equal(assistant.voice.language, "nl");
   assert.ok(assistant.name.length <= 40);
   assert.equal(assistant.model.provider, "google");
   assert.equal(assistant.model.model, "gemini-2.5-flash");
+  assert.equal(assistant.model.temperature, 0.6);
+  assert.equal(assistant.responseDelaySeconds, 0.55);
+  assert.equal(assistant.startSpeakingPlan.waitSeconds, 0.65);
   assert.equal(assistant.firstMessageInterruptionsEnabled, true);
   assert.ok(assistant.model.tools.some((tool) => tool.function.name === "create_order"));
   assert.ok(assistant.model.tools.some((tool) => tool.function.name === "create_booking"));
   assert.ok(assistant.model.messages[0].content.includes("Schakel NOOIT over naar Duits of Engels"));
+  assert.ok(assistant.model.messages[0].content.includes("Spreek rustig en in een natuurlijk tempo"));
+});
+
+test("Vapi nested function calls are normalized for order processing", () => {
+  const normalized = normalizeToolCall({
+    id: "tool-call-123",
+    type: "function",
+    function: {
+      name: "create_order",
+      arguments: "{\"customerName\":\"Richard\",\"items\":[{\"name\":\"Koffie\",\"quantity\":2}]}",
+    },
+  });
+  assert.deepEqual(normalized, {
+    id: "tool-call-123",
+    name: "create_order",
+    parameters: "{\"customerName\":\"Richard\",\"items\":[{\"name\":\"Koffie\",\"quantity\":2}]}",
+  });
+});
+
+test("assistant webhook can use an explicit stable URL instead of a local tunnel", () => {
+  const originalWebhookUrl = process.env.VAPI_WEBHOOK_URL;
+  const originalPublicBaseUrl = process.env.PUBLIC_BASE_URL;
+  try {
+    process.env.VAPI_WEBHOOK_URL = "https://orderagent-chi.vercel.app/api/webhooks/vapi";
+    process.env.PUBLIC_BASE_URL = "https://temporary.trycloudflare.com";
+    assert.equal(assistantConfiguration().server.url, "https://orderagent-chi.vercel.app/api/webhooks/vapi");
+  } finally {
+    if (originalWebhookUrl === undefined) delete process.env.VAPI_WEBHOOK_URL;
+    else process.env.VAPI_WEBHOOK_URL = originalWebhookUrl;
+    if (originalPublicBaseUrl === undefined) delete process.env.PUBLIC_BASE_URL;
+    else process.env.PUBLIC_BASE_URL = originalPublicBaseUrl;
+  }
 });
 
 test("assistant webhook uses Render's public URL when PUBLIC_BASE_URL is not set", () => {
+  const originalWebhookUrl = process.env.VAPI_WEBHOOK_URL;
   const originalPublicBaseUrl = process.env.PUBLIC_BASE_URL;
   const originalRenderExternalUrl = process.env.RENDER_EXTERNAL_URL;
   const originalVercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
   const originalVercelUrl = process.env.VERCEL_URL;
   try {
+    delete process.env.VAPI_WEBHOOK_URL;
     delete process.env.PUBLIC_BASE_URL;
     delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
     delete process.env.VERCEL_URL;
@@ -55,6 +96,8 @@ test("assistant webhook uses Render's public URL when PUBLIC_BASE_URL is not set
     const assistant = assistantConfiguration();
     assert.equal(assistant.server.url, "https://stem-voice-agent.onrender.com/api/webhooks/vapi");
   } finally {
+    if (originalWebhookUrl === undefined) delete process.env.VAPI_WEBHOOK_URL;
+    else process.env.VAPI_WEBHOOK_URL = originalWebhookUrl;
     if (originalPublicBaseUrl === undefined) delete process.env.PUBLIC_BASE_URL;
     else process.env.PUBLIC_BASE_URL = originalPublicBaseUrl;
     if (originalRenderExternalUrl === undefined) delete process.env.RENDER_EXTERNAL_URL;
@@ -67,11 +110,13 @@ test("assistant webhook uses Render's public URL when PUBLIC_BASE_URL is not set
 });
 
 test("Vercel production URL is used for webhooks and API entrypoints export handlers", () => {
+  const originalWebhookUrl = process.env.VAPI_WEBHOOK_URL;
   const originalPublicBaseUrl = process.env.PUBLIC_BASE_URL;
   const originalRenderExternalUrl = process.env.RENDER_EXTERNAL_URL;
   const originalVercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
   const originalVercelUrl = process.env.VERCEL_URL;
   try {
+    delete process.env.VAPI_WEBHOOK_URL;
     delete process.env.PUBLIC_BASE_URL;
     delete process.env.RENDER_EXTERNAL_URL;
     process.env.VERCEL_PROJECT_PRODUCTION_URL = "orderagent-chi.vercel.app";
@@ -84,6 +129,8 @@ test("Vercel production URL is used for webhooks and API entrypoints export hand
     assert.equal(typeof require("../api/auth/me"), "function");
     assert.equal(typeof require("../api/integrations/vapi/deploy"), "function");
   } finally {
+    if (originalWebhookUrl === undefined) delete process.env.VAPI_WEBHOOK_URL;
+    else process.env.VAPI_WEBHOOK_URL = originalWebhookUrl;
     if (originalPublicBaseUrl === undefined) delete process.env.PUBLIC_BASE_URL;
     else process.env.PUBLIC_BASE_URL = originalPublicBaseUrl;
     if (originalRenderExternalUrl === undefined) delete process.env.RENDER_EXTERNAL_URL;

@@ -405,6 +405,16 @@ function parseToolParameters(parameters) {
   return parameters || {};
 }
 
+function normalizeToolCall(toolCall) {
+  const call = toolCall || {};
+  const fn = call.function || {};
+  return {
+    id: call.id || "",
+    name: call.name || fn.name || "",
+    parameters: call.parameters ?? fn.arguments ?? call.arguments ?? {},
+  };
+}
+
 function createOrderFromTool(parameters, call) {
   const args = parseToolParameters(parameters);
   const customerName = String(args.customerName || "").trim();
@@ -478,7 +488,8 @@ function createBookingFromTool(parameters, call) {
 
 async function processToolCalls(message, accessToken, serviceRole = false) {
   const results = [];
-  for (const toolCall of message.toolCallList || []) {
+  for (const rawToolCall of message.toolCallList || []) {
+    const toolCall = normalizeToolCall(rawToolCall);
     const callId = toolCall.id || "";
     const previousState = structuredClone(state);
     try {
@@ -654,13 +665,19 @@ function assistantConfiguration() {
     model: {
       provider: "google",
       model: "gemini-2.5-flash",
+      temperature: 0.6,
       messages: [{
         role: "system",
         content: [
           `Je bent de vriendelijke, professionele telefonische medewerker van ${business.name}.`,
           "Taal is strikt Nederlands (Nederlands-Nederlands): antwoord uitsluitend in natuurlijk, helder Nederlands.",
           "Schakel NOOIT over naar Duits of Engels, ook niet bij Engelse leenwoorden. Alleen als de beller uitdrukkelijk om Engels vraagt, mag je Engels spreken.",
-          "Spreek vlot en beknopt. Luister aandachtig, laat de beller uitpraten en onderbreek niet.",
+          "Klink warm, oprecht en menselijk, als een attente Nederlandse medewerker aan de balie; praat spontaan en niet alsof je een script voorleest.",
+          "Gebruik natuurlijke spreektaal, korte gevarieerde zinnen en een rustige, vriendelijke toon. Reageer eerst kort op wat de klant zegt en stel daarna hoogstens één vervolgvraag tegelijk.",
+          "Vermijd herhaalde standaardopeningen, lange opsommingen, overdreven enthousiasme en onnodige herhaling. Laat ruimte voor de klant om na te denken en vul stiltes niet meteen op.",
+          "Spreek bedragen, tijden en productnamen uit zoals een medewerker dat in een echt gesprek zou doen. Gebruik kleine natuurlijke verbindingszinnen alleen wanneer ze echt passen; verzin geen klantgegevens.",
+          "Spreek rustig en in een natuurlijk tempo, met korte pauzes tussen gedachten. Praat niet gehaast; geef de klant na elke vraag tijd om te antwoorden. Houd antwoorden compact maar volledig.",
+          "Stel steeds één duidelijke vraag en wacht op het antwoord voordat je verdergaat. Herhaal namen, tijden en adressen rustig en controleer of de klant je goed verstaat.",
           `Openingstijden: ${business.openingHours || "vraag de klant zo nodig naar een geschikt tijdstip"}.`,
           `Diensten: ${services}.`,
           `Voorbereidingstijd: ongeveer ${business.preparationMinutes} minuten. Bezorging: ongeveer ${business.deliveryMinutes} minuten.`,
@@ -727,22 +744,25 @@ function assistantConfiguration() {
         },
       ],
     },
-    voice: { provider: "azure", voiceId: "nl-NL-ColetteNeural" },
+    voice: { provider: "vapi", voiceId: "Emma", version: 2, language: "nl" },
     transcriber: { provider: "deepgram", model: "nova-2", language: "nl" },
     endCallMessage: process.env.N8N_WEBHOOK_URL && /^\+[1-9]\d{7,14}$/.test(process.env.N8N_SMS_FROM_NUMBER || "")
       ? "Bedankt voor uw telefoontje. U ontvangt zo een sms met de samenvatting. Tot ziens!"
       : "Bedankt voor uw telefoontje. Tot ziens!",
     firstMessageInterruptionsEnabled: true,
     silenceTimeoutSeconds: 30,
-    responseDelaySeconds: 0.2,
+    responseDelaySeconds: 0.55,
+    startSpeakingPlan: { waitSeconds: 0.65 },
     numWordsToInterruptAssistant: 1,
     stopSpeakingPlan: { numWords: 1, voiceSeconds: 0.1, backoffSeconds: 1 },
     serverMessages: ["tool-calls", "end-of-call-report"],
     analysisPlan: { summaryPlan: { enabled: true } },
   };
   const baseUrl = publicBaseUrl();
-  if (baseUrl) {
-    assistant.server = { url: `${baseUrl.replace(/\/$/, "")}/api/webhooks/vapi` };
+  const webhookUrl = process.env.VAPI_WEBHOOK_URL
+    || (baseUrl ? `${baseUrl.replace(/\/$/, "")}/api/webhooks/vapi` : "");
+  if (webhookUrl) {
+    assistant.server = { url: webhookUrl };
     if (process.env.VAPI_WEBHOOK_CREDENTIAL_ID) {
       assistant.server.credentialId = process.env.VAPI_WEBHOOK_CREDENTIAL_ID;
     }
@@ -1119,6 +1139,7 @@ module.exports = Object.assign(server, {
   forwardCallToN8n,
   hashAdminPassword,
   handleRequest,
+  normalizeToolCall,
   readJson,
   serverlessHandler,
   summarizeCall,
